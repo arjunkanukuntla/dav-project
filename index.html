@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TG-SPDCL Electricity Consumption & Monitoring Dashboard</title>
+    <meta name="description" content="Interactive analytics dashboard for TG-SPDCL domestic electricity consumption, billing efficiency, and load analysis.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dark-theme">
+    <!-- Navigation Header -->
+    <header class="app-header">
+        <div class="logo-container">
+            <div class="logo-icon">
+                <i class="fa-solid fa-bolt-lightning"></i>
+            </div>
+            <div class="logo-text">
+                <h1>TG-SPDCL <span>Power Analytics</span></h1>
+                <p>Domestic Consumption & Load Monitoring System (July 2026)</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <div class="status-badge pulse">
+                <span class="status-dot"></span> System Live & Status Nominal
+            </div>
+            <button id="btnExportCSV" class="btn btn-secondary">
+                <i class="fa-solid fa-file-export"></i> Export CSV
+            </button>
+            <button id="btnRefresh" class="btn btn-primary">
+                <i class="fa-solid fa-rotate"></i> Refresh
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="dashboard-container">
+        <!-- Top KPI Cards Row -->
+        <section class="kpi-grid">
+            <div class="kpi-card cyan-glow">
+                <div class="kpi-icon"><i class="fa-solid fa-charging-station"></i></div>
+                <div class="kpi-content">
+                    <span class="kpi-title">Total Consumption</span>
+                    <div class="kpi-value" id="kpiTotalUnits">-- <span>GWh</span></div>
+                    <span class="kpi-sub" id="kpiAvgCons">Avg 151.5 kWh / Billed Conn</span>
+                </div>
+            </div>
+
+            <div class="kpi-card emerald-glow">
+                <div class="kpi-icon"><i class="fa-solid fa-users"></i></div>
+                <div class="kpi-content">
+                    <span class="kpi-title">Total Active Services</span>
+                    <div class="kpi-value" id="kpiTotalServices">-- <span>Conn</span></div>
+                    <span class="kpi-sub" id="kpiBilledServices">-- Billed Connections</span>
+                </div>
+            </div>
+
+            <div class="kpi-card blue-glow">
+                <div class="kpi-icon"><i class="fa-solid fa-chart-pie"></i></div>
+                <div class="kpi-content">
+                    <span class="kpi-title">Billing Efficiency</span>
+                    <div class="kpi-value" id="kpiBillingRate">-- <span>%</span></div>
+                    <span class="kpi-sub" id="kpiUnbilled">-- Unbilled Services</span>
+                </div>
+            </div>
+
+            <div class="kpi-card purple-glow">
+                <div class="kpi-icon"><i class="fa-solid fa-gauge-high"></i></div>
+                <div class="kpi-content">
+                    <span class="kpi-title">Total Connected Load</span>
+                    <div class="kpi-value" id="kpiTotalLoad">-- <span>MW</span></div>
+                    <span class="kpi-sub">Sanctioned Domestic Capacity</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filter & Control Bar -->
+        <section class="filter-card">
+            <div class="filter-header">
+                <h3><i class="fa-solid fa-sliders"></i> Interactive Filters & Slicing</h3>
+                <span class="filter-count" id="activeFilterBadge">Showing All Circles</span>
+            </div>
+            <div class="filter-body">
+                <div class="form-group">
+                    <label for="circleSelect"><i class="fa-solid fa-city"></i> Circle</label>
+                    <select id="circleSelect" class="form-select">
+                        <option value="ALL">All Circles (20)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="divisionSelect"><i class="fa-solid fa-sitemap"></i> Division</label>
+                    <select id="divisionSelect" class="form-select" disabled>
+                        <option value="ALL">All Divisions</option>
+                    </select>
+                </div>
+
+                <div class="form-group search-group">
+                    <label for="searchInput"><i class="fa-solid fa-magnifying-glass"></i> Search Area / Section</label>
+                    <input type="text" id="searchInput" class="form-input" placeholder="e.g. Jubilee Hills, Begumpet...">
+                </div>
+
+                <div class="form-group btn-group-align">
+                    <button id="btnResetFilters" class="btn btn-outline">
+                        <i class="fa-solid fa-filter-circle-xmark"></i> Reset
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analytics Tab Navigation -->
+        <div class="tabs-nav">
+            <button class="tab-btn active" data-tab="tab-overview">
+                <i class="fa-solid fa-chart-column"></i> Interactive Dashboard
+            </button>
+            <button class="tab-btn" data-tab="tab-anomalies">
+                <i class="fa-solid fa-triangle-exclamation"></i> Monitoring & Anomaly Alerts
+            </button>
+            <button class="tab-btn" data-tab="tab-gallery">
+                <i class="fa-solid fa-image"></i> Matplotlib Visual Reports
+            </button>
+            <button class="tab-btn" data-tab="tab-datatable">
+                <i class="fa-solid fa-table"></i> Sector Data Explorer
+            </button>
+        </div>
+
+        <!-- TAB 1: INTERACTIVE DASHBOARD -->
+        <div id="tab-overview" class="tab-content active">
+            <div class="charts-grid">
+                <!-- Chart 1: Circle Consumption & Billed Services -->
+                <div class="chart-card glass-panel">
+                    <div class="card-header">
+                        <h4><i class="fa-solid fa-chart-line"></i> Circle Consumption (GWh) & Services</h4>
+                        <div class="card-info"><i class="fa-solid fa-circle-info" title="Displays energy consumption and billed connections by Circle"></i></div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chartCircleConsumption"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 2: Billing Efficiency by Circle -->
+                <div class="chart-card glass-panel">
+                    <div class="card-header">
+                        <h4><i class="fa-solid fa-percent"></i> Billing Efficiency Rate (%) by Circle</h4>
+                        <div class="card-info"><i class="fa-solid fa-circle-info" title="Percentage of billed connections out of total connections"></i></div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chartBillingEfficiency"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 3: Connected Load vs Consumed Energy Scatter -->
+                <div class="chart-card glass-panel">
+                    <div class="card-header">
+                        <h4><i class="fa-solid fa-bullseye"></i> Load (kW) vs Consumption Correlation</h4>
+                        <div class="card-info"><i class="fa-solid fa-circle-info" title="Scatter distribution showing load efficiency per area"></i></div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chartLoadCorrelation"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 4: Top 10 Energy Consuming Areas -->
+                <div class="chart-card glass-panel">
+                    <div class="card-header">
+                        <h4><i class="fa-solid fa-fire"></i> Top 10 High Consumption Areas</h4>
+                        <div class="card-info"><i class="fa-solid fa-circle-info" title="Top electricity consuming domestic areas"></i></div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="chartTopAreas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: ANOMALY ALERTS & MONITORING -->
+        <div id="tab-anomalies" class="tab-content">
+            <div class="alerts-grid">
+                <!-- Alert Panel 1: Low Billing Efficiency -->
+                <div class="alert-card glass-panel danger-border">
+                    <div class="card-header">
+                        <h4 class="danger-text"><i class="fa-solid fa-triangle-exclamation"></i> Low Billing Efficiency Sections (< 85%)</h4>
+                        <span class="badge badge-danger" id="lowBillingCount">0 Identified</span>
+                    </div>
+                    <div class="alert-body scrollable-list" id="lowBillingList">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Alert Panel 2: High Consumption Load Hotspots -->
+                <div class="alert-card glass-panel warning-border">
+                    <div class="card-header">
+                        <h4 class="warning-text"><i class="fa-solid fa-temperature-high"></i> High Load Intensity Hotspots (> 250 units/kW)</h4>
+                        <span class="badge badge-warning" id="highIntensityCount">0 Identified</span>
+                    </div>
+                    <div class="alert-body scrollable-list" id="highIntensityList">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: MATPLOTLIB VISUAL REPORTS GALLERY -->
+        <div id="tab-gallery" class="tab-content">
+            <div class="gallery-intro">
+                <h3><i class="fa-solid fa-palette"></i> Python Matplotlib Generated Reports</h3>
+                <p>Publication-ready high-resolution plots produced directly by the Pandas & Matplotlib analysis script (`main.py`). Click any card to expand.</p>
+            </div>
+            <div class="gallery-grid">
+                <div class="gallery-item glass-panel" onclick="openModal('circle_consumption.png', 'Circle Consumption & Sanctioned Load')">
+                    <div class="gallery-img-wrap">
+                        <img src="circle_consumption.png" alt="Circle Consumption Plot" loading="lazy">
+                    </div>
+                    <div class="gallery-caption">
+                        <h5>Circle Consumption & Sanctioned Load</h5>
+                        <span>Energy (GWh) & Capacity (MW)</span>
+                    </div>
+                </div>
+
+                <div class="gallery-item glass-panel" onclick="openModal('top20_areas.png', 'Top 20 Electricity Consuming Areas')">
+                    <div class="gallery-img-wrap">
+                        <img src="top20_areas.png" alt="Top 20 Areas Plot" loading="lazy">
+                    </div>
+                    <div class="gallery-caption">
+                        <h5>Top 20 Consuming Sectors</h5>
+                        <span>Highest MWh Domestic Demand</span>
+                    </div>
+                </div>
+
+                <div class="gallery-item glass-panel" onclick="openModal('billing_efficiency.png', 'Circle Billing Efficiency Benchmark')">
+                    <div class="gallery-img-wrap">
+                        <img src="billing_efficiency.png" alt="Billing Efficiency Plot" loading="lazy">
+                    </div>
+                    <div class="gallery-caption">
+                        <h5>Circle Billing Efficiency</h5>
+                        <span>Billed Connection Rates %</span>
+                    </div>
+                </div>
+
+                <div class="gallery-item glass-panel" onclick="openModal('load_vs_units.png', 'Connected Load vs Energy Correlation')">
+                    <div class="gallery-img-wrap">
+                        <img src="load_vs_units.png" alt="Load vs Units Plot" loading="lazy">
+                    </div>
+                    <div class="gallery-caption">
+                        <h5>Load vs Units Scatter Plot</h5>
+                        <span>Linear Trend & Density</span>
+                    </div>
+                </div>
+
+                <div class="gallery-item glass-panel" onclick="openModal('distribution_metrics.png', 'Consumption & Billing Distributions')">
+                    <div class="gallery-img-wrap">
+                        <img src="distribution_metrics.png" alt="Distribution Metrics Plot" loading="lazy">
+                    </div>
+                    <div class="gallery-caption">
+                        <h5>Statistical Distributions</h5>
+                        <span>kWh per household & Billing Rates</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: SECTOR DATA EXPLORER TABLE -->
+        <div id="tab-datatable" class="tab-content">
+            <div class="table-card glass-panel">
+                <div class="table-controls">
+                    <div class="records-info" id="tableRecordsSummary">Showing 1 - 25 of 15,947 records</div>
+                    <div class="pagination-controls">
+                        <button id="btnPrevPage" class="btn btn-sm btn-outline" disabled><i class="fa-solid fa-chevron-left"></i> Prev</button>
+                        <span id="pageIndicator" class="page-num">Page 1 of 638</span>
+                        <button id="btnNextPage" class="btn btn-sm btn-outline">Next <i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table" id="sectorDataTable">
+                        <thead>
+                            <tr>
+                                <th>Circle</th>
+                                <th>Division</th>
+                                <th>Section</th>
+                                <th>Area / Neighborhood</th>
+                                <th class="text-right">Total Conn</th>
+                                <th class="text-right">Billed Conn</th>
+                                <th class="text-right">Billing Rate %</th>
+                                <th class="text-right">Units (kWh)</th>
+                                <th class="text-right">Connected Load (kW)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Image Modal for Gallery -->
+    <div id="imageModal" class="modal">
+        <span class="close-modal" onclick="closeModal()">&times;</span>
+        <div class="modal-content-wrap">
+            <img class="modal-content" id="modalImg">
+            <div id="modalCaption" class="modal-caption"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
